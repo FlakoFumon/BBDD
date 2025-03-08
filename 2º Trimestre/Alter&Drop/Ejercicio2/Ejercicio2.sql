@@ -1,133 +1,183 @@
-CREATE DATABASE a23marcoscc_BD_ExercicioAlter1;
+CREATE DATABASE a23marcoscc_BD_ExercicioAlter2;
 GO
-USE a23marcoscc_BD_ExercicioAlter1;
+USE a23marcoscc_BD_ExercicioAlter2;
+
+CREATE TABLE TFNO_PROFE (
+
+	codprof INT,
+	numero CHAR(9),
+	principal CHAR(1),
+	
+	CONSTRAINT PK_TFNO_PROFE
+	PRIMARY KEY (codprof, numero),
+	
+	CONSTRAINT CHK_NUMERO
+	CHECK (numero like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]'),
+	
+	CONSTRAINT CHK_PRINCIPAL
+	CHECK (principal IN('S', 'N'))
+
+);
 
 
-CREATE TABLE EMPLEADO(
+CREATE TABLE PROFESOR (
 
-	codemp INT IDENTITY (1,1) PRIMARY KEY,
-	nombre VARCHAR(30) NOT NULL,
-	apellido1 VARCHAR(30) NOT NULL,
-	apellido2 VARCHAR(30) NOT NULL,
+	codprof INT IDENTITY(1,1) PRIMARY KEY,
+	dni CHAR(9) UNIQUE,
+	nombre VARCHAR(30),
 	direccion VARCHAR(30),
-	provincia VARCHAR(30) DEFAULT('Pontevedra'),
-	dni CHAR(9), 
-	coddepto INT, -- FOREIGN KEY
-	salario SMALLMONEY DEFAULT (0),
-	fecalta CHAR(12) UNIQUE, -- CHECK
-	dto DECIMAL(4,2), 
+	tipocarnet CHAR(2),
+	
 	
 	CONSTRAINT CHK_DNI
-	CHECK (dni LIKE '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][A-Z]'),
+	CHECK (dni like '[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][A-Z]'),
 	
-	CONSTRAINT CHK_FECALTA
-	CHECK (fecalta LIKE '[0-3][0-9]/[0-1][0-9]/[1-2][0-9][0-9][0-9]')
+	CONSTRAINT CHK_TIPOCARNET
+	CHECK (tipocarnet IN ('A1', 'A2', 'B1', 'B2'))
 
 );
 
 
-CREATE TABLE DEPARTAMENTO(
+CREATE TABLE MODULO (
 
-	coddepto INT IDENTITY (1,1) PRIMARY KEY,
-	depto VARCHAR(30),
-	codjefe INT, --FOREIGN KEY
-	presupuesto MONEY DEFAULT(0),
+	codmod INT IDENTITY(1,1) PRIMARY KEY,
+	nombre VARCHAR(30),
+	codprof INT,
+	coddelegado INT,
+	ciclo VARCHAR(4),
+	
+	CONSTRAINT CHK_CICLO
+	CHECK (ciclo IN ('SMIR', 'ASIR', 'DAM', 'DAW')),
 
 );
 
 
-CREATE TABLE HORAS_EXTRA(
+CREATE TABLE MATRICULA (
 
-	codemp INT,
-	fecha DATETIME,
-	num_horas int,
+	codmod INT,
+	codalumno INT,
+	fecmatricula DATETIME,
 
-	CONSTRAINT PK_HORAS_EXTRA
-	PRIMARY KEY (codemp, fecha)
+	CONSTRAINT PK_MATRICULA
+	PRIMARY KEY (codmod, codalumno)
 );
 
 
--- ##################
--- ## FOREIGN KEYS ##
--- ##################
+CREATE TABLE ALUMNO (
 
-	-- EMPLEADO
+	numexp INT IDENTITY(1,1) PRIMARY KEY,
+	nombre VARCHAR(30),
+	apellidos VARCHAR(30),
+	fecnac DATE,
 
-		ALTER TABLE EMPLEADO ADD 
-		CONSTRAINT FK_EMPLEADO_DEPARTAMENTO
-			FOREIGN KEY (coddepto)
-			REFERENCES DEPARTAMENTO (coddepto)
-			ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+
+-- ####################
+-- ### FOREIGN KEYS ###
+-- ####################
+
+
+	--TFNO_PROFE
+		ALTER TABLE TFNO_PROFE
+		ADD CONSTRAINT FK_TFNO_PROFE_PROFESOR
+			FOREIGN KEY (codprof)
+			REFERENCES PROFESOR(codprof)
+			ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+	--MODULO
+	
+		ALTER TABLE MODULO
+		ADD CONSTRAINT FK_MODULO_PROFESOR
+			FOREIGN KEY (codprof)
+			REFERENCES PROFESOR(codprof)
+			ON UPDATE CASCADE ON DELETE SET NULL;
+		
+		ALTER TABLE MODULO	
+		ADD CONSTRAINT FK_MODULO_ALUMNO
+			FOREIGN KEY (coddelegado)
+			REFERENCES ALUMNO(numexp)
+			ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+	--MATRICULA
+	
+		ALTER TABLE MATRICULA
+		ADD CONSTRAINT FK_MATRICULA_MODULO
+			FOREIGN KEY (codmod)
+			REFERENCES MODULO(codmod)
+			ON UPDATE CASCADE ON DELETE NO ACTION;
+		
+		ALTER TABLE MATRICULA	
+		ADD CONSTRAINT FK_MATRICULA_ALUMNO
+			FOREIGN KEY (codalumno)
+			REFERENCES ALUMNO(numexp)
+			ON UPDATE NO ACTION ON DELETE NO ACTION; -- CAMBIADO A UPDATE NO ACTION POR ERRORES CON EL GESTOR
+
+
+-- ########################
+-- ### CAMBIOS DE ALTER ###
+-- ########################
+
+ -- Añadir campos a la tabla PROFESOR
+ 
+	SELECT * FROM PROFESOR
+	
+		ALTER TABLE PROFESOR
+			ADD apellido1 VARCHAR (30);
 			
-	-- DEPARTAMENTO
-
-		ALTER TABLE DEPARTAMENTO ADD 
-		CONSTRAINT FK_DEPARTAMENTO_EMPLEADO
-			FOREIGN KEY (codjefe)
-			REFERENCES EMPLEADO (codemp)
-			ON UPDATE NO ACTION ON DELETE NO ACTION
-			
-			
-	-- HORAS_EXTRA
-		ALTER TABLE HORAS_EXTRA ADD 
-		CONSTRAINT FK_HORAS_EXTRA_EMPLEADO
-			FOREIGN KEY (codemp)
-			REFERENCES EMPLEADO (codemp)
-			ON UPDATE CASCADE ON DELETE CASCADE
-
-
-
--- ##################
--- ## ALTER TABLES ##
--- ##################
-
--- AÑade un campo a la tabla empleado para guardar el importe que cobra el empleado por sus horas extra.
-
-	ALTER TABLE EMPLEADO
-	ADD importe_horas_extra MONEY;
-
-
--- Todos los empleados del mismo departamento cobran lo mismo, 
---así que mejor elimina el campo que acabas de crear y añádelo a la tabla departamento
-
-	ALTER TABLE EMPLEADO
-	DROP COLUMN importe_horas_extra;
+		ALTER TABLE PROFESOR
+			ADD apellido2 VARCHAR (30);
 	
-	ALTER TABLE DEPARTAMENTO
-	ADD importe_horas_extra MONEY;
-
-
-
--- Se han dado cuenta que guardar la fecha de alta del empleado como texto es una tontería, 
--- así que cambiaremos para que sea una fecha. Además debe tomar por defecto el valor de la fecha actual.
-
-	-- Debemos borrar la clave del CHECK
-	ALTER TABLE EMPLEADO
-	DROP CONSTRAINT CHK_FECALTA;
-
-	-- Debemos borrar la clave del UNIQUE
-	ALTER TABLE EMPLEADO
-	DROP CONSTRAINT UQ__EMPLEADO__FEB4AD8F1273C1CD;
-
-	-- Borramos la columna
-	ALTER TABLE EMPLEADO
-	DROP COLUMN fecalta;
-	
-	-- La añadimos de nuevo
-	ALTER TABLE EMPLEADO
-	ADD fecalta DATETIME UNIQUE DEFAULT GETDATE()
-	
-
-
--- Modifica el campo DNI del empleado para que tenga que ser indicado obligatoriamente.
-
-	ALTER TABLE EMPLEADO
-	ALTER COLUMN dni CHAR(9) not null
-
-
--- Cambia el nombre del campo 'Empleado.dto' por 'Empleado.descuento' y del campo 'Departamento.depto' por 'Departamento.departamento'
+	SELECT * FROM PROFESOR
 	
 	
-	EXEC sp_rename 'EMPLEADO.dto', 'descuento', 'COLUMN'
+-- Modificar el campo fecnac de la tabla ALUMNO
+
+	select * from ALUMNO
 	
-	EXEC sp_rename 'DEPARTAMENTO.depto', 'departamento', 'COLUMN'
+		EXEC sp_rename 'ALUMNO.fecnac', 'fechanac', 'COLUMN';
+	
+	select * from ALUMNO
+
+	
+-- Cambiar nombre de la tabla TFNO_PROFE
+
+	SELECT * FROM TFNO_PROFE
+	
+		EXEC sp_rename 'TFNO_PROFE', 'TELEFONOS';
+		
+	SELECT * FROM TELEFONOS
+	
+
+-- Eliminar la FK que tiene el campo coddelegado
+
+	ALTER TABLE MODULO
+		DROP FK_MODULO_ALUMNO
+
+		
+-- Añade en la tabla MODULO un campo llamado "seguimiento", que será un número entero de tamaño máximo 999999
+
+	ALTER TABLE MODULO
+		ADD seguimiento INT 
+		CONSTRAINT CHK_SEGUIMIENTO
+		CHECK (seguimiento <= 999999);
+
+		
+-- Modifica el campo MODULO.codprof para que no pueda ser nulo
+
+	ALTER TABLE MODULO
+		ALTER COLUMN codprof INT NOT NULL;
+		
+
+-- Nos interesa emplear la tabla de TFNO_PROFE para guardar teléfonos también de los alumnos, 
+-- por lo que necesitamos añadir un nuevo campo a la tabla que indique el tipo de teléfono (podrá ser ‘ALUMNO’ o ‘PROFESOR’) 
+-- y eliminar la foreign key que teníamos en el campo codprof.
+
+	ALTER TABLE TELEFONOS
+		ADD tipoTelefono VARCHAR(8) CONSTRAINT CHK_TIPOTELEFONO
+									CHECK (tipoTelefono IN('ALUMNO', 'PROFESOR'));
+									
+	ALTER TABLE TELEFONOS
+		DROP FK_TFNO_PROFE_PROFESOR;

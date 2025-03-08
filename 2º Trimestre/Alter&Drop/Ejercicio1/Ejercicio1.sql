@@ -84,7 +84,7 @@ CREATE TABLE HORAS_EXTRA(
 -- AÑade un campo a la tabla empleado para guardar el importe que cobra el empleado por sus horas extra.
 
 	ALTER TABLE EMPLEADO
-	ADD importe_horas_extra MONEY DEFAULT(0);
+	ADD importe_horas_extra MONEY;
 
 
 -- Todos los empleados del mismo departamento cobran lo mismo, 
@@ -92,25 +92,42 @@ CREATE TABLE HORAS_EXTRA(
 
 	ALTER TABLE EMPLEADO
 	DROP COLUMN importe_horas_extra;
-
+	
 	ALTER TABLE DEPARTAMENTO
-	ADD importe_horas_extra MONEY;;
+	ADD importe_horas_extra MONEY;
 
 
 
--- Se han dado cuenta que guardar la fecha de alta del empleado como tezxto es una tontería, 
+-- Se han dado cuenta que guardar la fecha de alta del empleado como texto es una tontería, 
 -- así que cambiaremos para que sea una fecha. Además debe tomar por defecto el valor de la fecha actual.
 
-	
-
+	-- Debemos borrar la clave del CHECK
 	ALTER TABLE EMPLEADO
-	ADD fecalta DATE DEFAULT GETDATE();
+	DROP CONSTRAINT CHK_FECALTA;
 
+	-- Debemos borrar la clave del UNIQUE
+	ALTER TABLE EMPLEADO
+	DROP CONSTRAINT UQ__EMPLEADO__FEB4AD8F1273C1CD;
+
+	-- Borramos la columna
+	ALTER TABLE EMPLEADO
+	DROP COLUMN fecalta;
+	
+	-- La añadimos de nuevo
+	ALTER TABLE EMPLEADO
+	ADD fecalta DATETIME UNIQUE DEFAULT GETDATE()
+	
 
 
 -- Modifica el campo DNI del empleado para que tenga que ser indicado obligatoriamente.
 
-
+	ALTER TABLE EMPLEADO
+	ALTER COLUMN dni CHAR(9) not null
 
 
 -- Cambia el nombre del campo 'Empleado.dto' por 'Empleado.descuento' y del campo 'Departamento.depto' por 'Departamento.departamento'
+	
+	
+	EXEC sp_rename 'EMPLEADO.dto', 'descuento', 'COLUMN'
+	
+	EXEC sp_rename 'DEPARTAMENTO.depto', 'departamento', 'COLUMN'
